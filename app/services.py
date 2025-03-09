@@ -1,71 +1,74 @@
 import asyncio
 import logging
-
-from transformers import pipeline
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
-from langchain_community.llms import OpenAI
 import openai
 
-from app.database import collection  # MongoDB 연결
-from app.config import OPENAI_API_KEY
+from app.database import generated_texts_collection  # MongoDB 연결
+from app.config import OPENAI_API_KEY  # 환경 변수에서 OpenAI API 키 가져오기
 
-# OpenAI API 키 설정
-openai.api_key = OPENAI_API_KEY
+# ✅ OpenAI API 설정
+client = openai.OpenAI(api_key=OPENAI_API_KEY)  # OpenAI API 클라이언트 인스턴스 생성
 
-# Hugging Face 모델 로드 (동기 실행)
-generator = pipeline('text-generation', model='gpt2')
+# ✅ 로깅 설정
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# 비동기로 Hugging Face 모델 실행
-async def generate_text(prompt: str):
-    loop = asyncio.get_running_loop()
-    generated_text = await loop.run_in_executor(None, lambda: generator(prompt, max_length=200, truncation=True))
-    return generated_text[0]['generated_text']
 
-# OpenAI API 비동기 호출
+# INFO 레벨 이상의 로그를 출력하고, 시간/레벨/메시지를 포함하는 로그 포맷 설정
+
+# ✅ OpenAI API 요청 함수
 async def get_openai_response(prompt: str):
-    logging.info(f"🔵 OpenAI API 요청 시작: {prompt}")  # 요청 로그 찍기
+    """
+    OpenAI API를 호출하여 사용자 프롬프트(prompt)에 대한 응답을 생성하는 함수.
 
-    loop = asyncio.get_running_loop()
-    response = await loop.run_in_executor(None, lambda: openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=150,
+    Args:
+        prompt (str): 사용자가 입력한 프롬프트 (질문 또는 요청).
+
+    Returns:
+        str: OpenAI에서 생성한 응답 텍스트.
+    """
+    logging.info(f"🔵 OpenAI API 요청 시작: {prompt}")  # API 요청 로그 기록
+
+    loop = asyncio.get_running_loop()  # 현재 실행 중인 이벤트 루프 가져오기
+    response = await loop.run_in_executor(None, lambda: client.chat.completions.create(
+        model="gpt-3.5-turbo",  # 사용할 GPT 모델 (gpt-3.5-turbo)
+        messages=[{"role": "user", "content": prompt}],  # 사용자 메시지를 포함한 대화 기록
+        max_tokens=150,  # 최대 토큰 수 (150 토큰까지 생성)
     ))
 
-    logging.info(f"🟢 OpenAI 원본 응답: {response}")  # 응답 원본을 로그에 출력
+    logging.info(f"🟢 OpenAI API 원본 응답: {response}")  # API 원본 응답 로그 기록
+    generated_text = response.choices[0].message.content.strip()  # 응답에서 텍스트만 추출 및 공백 제거
+    logging.info(f"🟢 OpenAI API 최종 응답: {generated_text}")  # 최종 응답 로그 기록
 
-    generated_text = response.choices[0].text.strip()
-    logging.info(f"🟢 OpenAI API 응답 받음: {generated_text}")  # 가공된 응답 로그 찍기
-
-    return generated_text
+    return generated_text  # OpenAI가 생성한 응답 반환
 
 
-# MongoDB에 텍스트 저장
+# ✅ MongoDB에 텍스트 저장
 async def save_generated_text(prompt: str, generated_text: str):
-    document = {"prompt": prompt, "generated_text": generated_text}
-    result = await collection.insert_one(document)
-    return result.inserted_id
+    """
+    사용자의 프롬프트와 OpenAI에서 생성된 텍스트를 MongoDB에 저장하는 함수.
 
-# MongoDB에서 가장 최신 데이터 가져오기
+    Args:
+        prompt (str): 사용자가 입력한 프롬프트.
+        generated_text (str): OpenAI가 생성한 응답 텍스트.
+
+    Returns:
+        ObjectId: 저장된 문서의 MongoDB ObjectId.
+    """
+    logging.info(f"💾 MongoDB에 데이터 저장: {prompt} -> {generated_text}")  # 저장 작업 로그 기록
+    document = {"prompt": prompt, "generated_text": generated_text}  # 저장할 문서 생성
+    result = await generated_texts_collection.insert_one(document)  # MongoDB에 문서 저장 (비동기 실행)
+    return result.inserted_id  # 저장된 문서의 ObjectId 반환
+
+
+# ✅ MongoDB에서 가장 최신 데이터 가져오기
 async def get_stored_text():
-    document = await collection.find_one(sort=[('_id', -1)])
-    return document
+    """
+    MongoDB에서 가장 최근에 저장된 프롬프트 및 생성된 텍스트를 가져오는 함수.
 
-# LangChain을 사용한 추가 분석
-async def process_with_langchain():
-    document = await get_stored_text()
+    Returns:
+        dict or None: 가장 최신의 문서 반환 (없으면 None 반환).
+    """
+    logging.info("📥 MongoDB에서 최신 데이터 가져오기")  # 데이터 조회 로그 기록
+    document = await generated_texts_collection.find_one(sort=[('_id', -1)])  # 최신 데이터 1개 가져오기
     if not document:
-        return "No data found in MongoDB"
-
-    generated_text = document["generated_text"]
-
-    # LangChain 설정
-    prompt_template = "Given the following prompt, summarize or generate more information: {generated_text}"
-    prompt_obj = PromptTemplate(input_variables=["generated_text"], template=prompt_template)
-
-    llm = OpenAI(model_name="text-davinci-003", openai_api_key=OPENAI_API_KEY)
-    llm_chain = LLMChain(prompt=prompt_obj, llm=llm)
-
-    result = await llm_chain.arun(generated_text)
-    return result
+        logging.warning("⚠️ MongoDB에 데이터가 없음!")  # 데이터가 없으면 경고 로그 출력
+    return document  # 가져온 문서 반환 (없으면 None)

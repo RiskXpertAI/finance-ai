@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTMX 챗봇</title>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+        .chat-box { width: 100%; max-width: 500px; margin: auto; border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
+        .message { padding: 10px; margin: 5px 0; border-radius: 10px; display: inline-block; max-width: 80%; }
+        .user { background-color: #d1e7fd; text-align: right; float: right; }
+        .bot { background-color: #f1f1f1; text-align: left; float: left; }
+        .clear { clear: both; }
+    </style>
+</head>
+<body>
+    <h1>HTMX 챗봇</h1>
+    <div class="chat-box" id="chat-box">
+        <div class="message bot">안녕하세요! 질문을 입력하세요.</div>
+        <div class="clear"></div>
+    </div>
+
+    <form id="chat-form" hx-post="/chat/" hx-target="#chat-box" hx-swap="beforeend">
+        <input type="text" name="prompt" id="user-input" placeholder="질문을 입력하세요..." required />
+        <button type="submit">전송</button>
+    </form>
+
+    <script>
+        document.getElementById("chat-form").addEventListener("htmx:afterRequest", function () {
+            document.getElementById("user-input").value = "";
+        });
+    </script>
+</body>
+</html>
