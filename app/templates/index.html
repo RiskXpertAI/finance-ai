@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI + Jinja</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+    <script src="{{ url_for('static', path='/app.js') }}"></script>
+</head>
+<body>
+    <h1>안녕하세요, {{ username }}님!</h1>
+    <p>FastAPI와 Jinja2를 활용한 기본 템플릿입니다.</p>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# 가상 환경 폴더 무시
+.venv/
+venv/
+
+# Python 관련 무시 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 환경 설정 파일
+.env
+*.env
