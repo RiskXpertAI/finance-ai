@@ -58,4 +58,7 @@ async def chat(request: Request):
     user_input = form["prompt"]
 
     response_text = await get_openai_response(user_input)  # OpenAI API 호출
+    await save_generated_text(user_input, response_text)
+
     return HTMLResponse(f'<div class="message bot">{response_text}</div>')
+
