@@ -5,6 +5,8 @@ torch
 motor
 langchain
 openai
-
-
-
+pandas
+numpy
+scikit-learn
+pymongo
+python-multipart
