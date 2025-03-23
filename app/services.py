@@ -72,3 +72,48 @@ async def get_stored_text():
     if not document:
         logging.warning("⚠️ MongoDB에 데이터가 없음!")  # 데이터가 없으면 경고 로그 출력
     return document  # 가져온 문서 반환 (없으면 None)
+
+
+# 프롬포트 생성함수
+def build_forecast_prompt(user_input: str, forecast: dict):
+    forecast_text = f"""
+3개월 후 주요 지표는 다음과 같습니다:
+- GDP: {forecast['GDP']:.3f}
+- 환율: {forecast['환율']:.2f}
+- 생산자물가지수: {forecast['생산자물가지수']:.2f}
+- 소비자물가지수: {forecast['소비자물가지수']:.2f}
+- 금리: {forecast['금리']:.2f}
+"""
+    prompt = f"""
+```{forecast_text}```
+
+[Note]
+1. Summary는 400글자 내외로 작성.
+2. Summary는 {{\\n}}을 포함할 수 없다.
+
+출력은 반드시 한글로 작성하며 다음 양식을 따른다:
+
+Summary: {{```로 둘러싸인 글의 요약}}
+
+사용자 질문: {user_input}
+"""
+    return prompt
+
+
+# 새로운 함수로 GPT-2 응답을 처리할 수 있도록 수정
+async def get_scenario_based_answer(prompt: str):
+
+    logging.info(f"🔵 GPT-2 API 요청 시작: {prompt}")  # API 요청 로그 기록
+
+    loop = asyncio.get_running_loop()  # 현재 실행 중인 이벤트 루프 가져오기
+    response = await loop.run_in_executor(None, lambda: client.chat.completions.create(
+        model="gpt-3.5-turbo",  # 사용할 GPT 모델
+        messages=[{"role": "user", "content": prompt}],  # 사용자 메시지를 포함한 대화 기록
+        max_tokens=300,  # 최대 토큰 수 (상황에 따라 늘릴 수 있음)
+    ))
+
+    logging.info(f"🟢 GPT-2 API 원본 응답: {response}")  # API 원본 응답 로그 기록
+    generated_text = response.choices[0].message.content.strip()  # 응답에서 텍스트만 추출 및 공백 제거
+    logging.info(f"🟢 GPT-2 API 최종 응답: {generated_text}")  # 최종 응답 로그 기록
+
+    return generated_text  # GPT-2가 생성한 응답 반환

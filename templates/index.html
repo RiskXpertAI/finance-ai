@@ -1,43 +1,53 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RiskXpertAI 챗봇</title>
-  <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-  <script defer src="/static/app.js"></script>
-  <link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiskXpertAI 챗봇</title>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script defer src="/static/app.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="main-container">
-    <!-- 제목 -->
-    <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
+    <img src="/static/images/polarbear.png" class="character">
+    <div class="main-container">
+        <!-- ✅ 최상단 제목 -->
+        <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
 
-    <!-- 대화창 -->
-    <div class="chat-box" id="chat-box">
-      <div class="message bot">안녕하세요! 개월 수를 선택하고 메시지를 입력해주세요.</div>
+        <div class="container">
+            <!-- ✅ 챗봇 대화창 (왼쪽) -->
+            <div class="chat-section">
+                <div class="chat-box" id="chat-box">
+                    <div class="message bot">안녕하세요! 원하시는 개월 수를 선택하고 메시지를 입력해주세요.</div>
+                </div>
+            </div>
+
+            <!-- ✅ 입력창 및 개월 수 선택 (오른쪽) -->
+            <div class="input-container">
+                <div class="input-section">
+                    <label for="months">📅 개월 수 선택:</label>
+                    <select id="months">
+                        <option value="1">1개월 후</option>
+                        <option value="2">2개월 후</option>
+                        <option value="3">3개월 후</option>
+                        <option value="4">4개월 후</option>
+                        <option value="5">5개월 후</option>
+                        <option value="6">6개월 후</option>
+                        <option value="7">7개월 후</option>
+                        <option value="8">8개월 후</option>
+                        <option value="9">9개월 후</option>
+                        <option value="10">10개월 후</option>
+                        <option value="11">11개월 후</option>
+                        <option value="12">12개월 후</option>
+                    </select>
+
+                    <form id="chat-form">
+                        <input type="text" name="prompt" id="user-input" placeholder="메시지를 입력하세요..." required />
+                        <button type="submit">전송</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <!-- 입력창 -->
-    <form id="chat-form" class="input-form">
-      <select id="months" name="months">
-        <option value="1">1개월 후</option>
-        <option value="2">2개월 후</option>
-        <option value="3">3개월 후</option>
-        <option value="4">4개월 후</option>
-        <option value="5">5개월 후</option>
-        <option value="6">6개월 후</option>
-        <option value="7">7개월 후</option>
-        <option value="8">8개월 후</option>
-        <option value="9">9개월 후</option>
-        <option value="10">10개월 후</option>
-        <option value="11">11개월 후</option>
-        <option value="12">12개월 후</option>
-      </select>
-
-      <input type="text" name="prompt" id="user-input" placeholder="메시지를 입력하세요..." required />
-      <button type="submit">전송</button>
-    </form>
-  </div>
 </body>
 </html>

@@ -10,3 +10,5 @@ numpy
 scikit-learn
 pymongo
 python-multipart
+motor[srv]
+redis

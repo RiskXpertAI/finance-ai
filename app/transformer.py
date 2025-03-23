@@ -3,14 +3,15 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from pymongo import MongoClient
-
+from app.config import MONGO_URI
+import httpx
 from transformers import PreTrainedModel, PretrainedConfig
 
-from fastapi import FastAPI, Form
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI,HTTPException
+from app.services import get_openai_response, save_generated_text, build_forecast_prompt
+from pydantic import BaseModel
 
 # -----------------------------
 # 1. Dataset: 가변 window 및 horizon
@@ -137,8 +138,8 @@ def run_forecasting(window_size=12, forecast_horizon=5):
     """
     # (A) MongoDB 데이터 로드
     try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["generated_texts"]
+        client = MongoClient(MONGO_URI)
+        db = client["financeai"]
         collection = db["financial_data"]
         cursor = collection.find({}, {
             "_id": 0,
@@ -199,7 +200,7 @@ def run_forecasting(window_size=12, forecast_horizon=5):
         target_year += 1
     future_time = f"{target_year}{target_mon:02d}"
 
-    result = {**dict(zip(feature_cols, pred_real)), "TIME": future_time}
+    result = {**dict(zip(feature_cols, map(float, pred_real))), "TIME": future_time}
     return result
 
 # -----------------------------
@@ -207,11 +208,38 @@ def run_forecasting(window_size=12, forecast_horizon=5):
 # -----------------------------
 app = FastAPI()
 
-@app.post("/predict")
-async def predict(months: int = Form(...), window_size: int = Form(12)):
-    try:
-        # HTML에서 받은 'months' 값(예측할 개월 수)을 forecast_horizon에 전달합니다.
-        result = run_forecasting(window_size=window_size, forecast_horizon=months)
-        return JSONResponse(content=result)
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+
+
+
+# 1. Pydantic 모델을 정의하여 JSON 데이터 받기
+class ChatRequest(BaseModel):
+    prompt: str
+    months: int
+
+
+@app.post("/chat/")
+async def chat(request: ChatRequest):
+    user_input = request.prompt  # 사용자가 입력한 질문
+    months = request.months  # 선택한 개월 수
+
+    # 1. transformer 예측값 가져오기 (httpx 사용)
+    async with httpx.AsyncClient() as client:  # httpx.AsyncClient 사용
+        predict_response = await client.post(
+            "http://localhost:8000/predict",  # 예측 엔드포인트로 수정 필요
+            data={"months": months, "window_size": 12}
+        )
+
+    if predict_response.status_code != 200:
+        raise HTTPException(status_code=500, detail="예측 오류")
+
+    forecast = predict_response.json()  # 예측 결과 가져오기
+    forecast_text = "\n".join([f"{k}: {v:.2f}" for k, v in forecast.items() if k != "TIME"])
+
+    # 2. 프롬프트 생성
+    prompt = build_forecast_prompt(user_input, forecast)
+
+    # 3. GPT에 요청
+    response_text = await get_openai_response(prompt)
+    await save_generated_text(user_input, response_text)
+
+    return {"response": response_text}  # JSON 형식으로 응답

@@ -1,16 +1,19 @@
+import httpx
 from starlette.staticfiles import StaticFiles
-from fastapi import HTTPException
 
 from app.indicator import fetch_and_store_financial_data
 from app.models import TextRequest
-from app.services import save_generated_text, get_openai_response
 from app.database import database
 
-from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
-from app.services import get_openai_response
 
+
+from fastapi import FastAPI, HTTPException, Form, Request
+from app.services import get_openai_response, save_generated_text, build_forecast_prompt, get_scenario_based_answer
+from app.redis_cache import cache_forecast, get_cached_forecast
+from app.transformer import run_forecasting, ChatRequest
+from starlette.responses import JSONResponse
 
 app = FastAPI()
 
@@ -48,17 +51,64 @@ async def chatbot_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+
+@app.post("/predict")
+async def predict(months: int = Form(...), window_size: int = Form(12)):
+    try:
+        result = run_forecasting(window_size=window_size, forecast_horizon=months)
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @app.post("/chat/")
-async def chat(request: Request):
-    """ 챗봇 API: 사용자의 입력을 받아 OpenAI에서 응답 생성 후 반환 """
-    if request.method != "POST":
-        raise HTTPException(status_code=405, detail="This endpoint only accepts POST requests.")
+async def chat(request: ChatRequest):
+    user_input = request.prompt  # 사용자가 입력한 질문
+    months = request.months  # 선택한 개월 수
 
-    form = await request.form()
-    user_input = form["prompt"]
+    # Redis 캐시에서 예측값을 확인
+    cache_key = f"forecast_{months}_months"
+    print(f"🔍 Redis 캐시에서 예측값을 확인 중... 캐시 키: {cache_key}")
 
-    response_text = await get_openai_response(user_input)  # OpenAI API 호출
-    await save_generated_text(user_input, response_text)
+    forecast = get_cached_forecast(cache_key)
 
-    return HTMLResponse(f'<div class="message bot">{response_text}</div>')
+    if forecast:
+        print(f"🔵 Redis에서 캐시된 예측값 로드 성공: {forecast}")
+    else:
+        print(f"🔴 Redis에 캐시된 예측값이 없어서 새로운 예측을 진행합니다.")
+
+    # 캐시된 예측값이 없다면 트랜스포머 모델 예측을 수행
+    if forecast is None:
+        async with httpx.AsyncClient() as client:
+            predict_response = await client.post(
+                "http://localhost:8000/predict",  # 예측 엔드포인트
+                data={"months": months, "window_size": 12}
+            )
+
+        if predict_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="예측 오류")
+
+        forecast = predict_response.json()  # 예측 결과 가져오기
+        print(f"🟢 예측 결과가 성공적으로 반환되었습니다: {forecast}")
+
+        # 예측값을 Redis에 캐시
+        cache_forecast(cache_key, forecast)
+        print(f"🔴 예측값을 Redis에 저장 완료: {forecast}")
+
+    # 2. GPT-1을 위한 프롬프트 생성 (예측된 경제 지표를 사용)
+    prompt_for_gpt1 = build_forecast_prompt(user_input, forecast)
+    print(f"🔵 생성된 GPT-1 프롬프트: {prompt_for_gpt1}")
+
+    # 3. GPT-1 응답 받기
+    gpt1_response = await get_openai_response(prompt_for_gpt1)
+    print(f"🟢 GPT-1 응답: {gpt1_response}")
+
+    # 4. GPT-1의 응답을 GPT-2로 보내서 구체적인 시나리오 기반 답변 생성
+    gpt2_response = await get_scenario_based_answer(gpt1_response)
+    print(f"🟢 GPT-2 응답: {gpt2_response}")
+
+    # 5. 최종 응답 저장
+    await save_generated_text(user_input, gpt2_response)
+
+    return {"response": gpt2_response}  # JSON 형식으로 응답
 
