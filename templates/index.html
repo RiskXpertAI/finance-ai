@@ -10,19 +10,23 @@
 </head>
 <body>
     <img src="/static/images/polarbear.png" class="character">
+
     <div class="main-container">
-        <!-- ✅ 최상단 제목 -->
-        <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
+        <!-- ✅ 상단 헤더 (제목 + 로그인) -->
+        <div class="header">
+            <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
+            <a href="/login" class="kakao-login-button">카카오로 로그인</a>
+        </div>
 
         <div class="container">
-            <!-- ✅ 챗봇 대화창 (왼쪽) -->
+            <!-- ✅ 챗봇 대화창 -->
             <div class="chat-section">
                 <div class="chat-box" id="chat-box">
                     <div class="message bot">안녕하세요! 원하시는 개월 수를 선택하고 메시지를 입력해주세요.</div>
                 </div>
             </div>
 
-            <!-- ✅ 입력창 및 개월 수 선택 (오른쪽) -->
+            <!-- ✅ 입력 및 옵션 선택 -->
             <div class="input-container">
                 <div class="input-section">
                     <label for="months">📅 개월 수 선택:</label>
@@ -50,4 +54,31 @@
         </div>
     </div>
 </body>
+
+<!-- ✅ 로그인 후 토큰 저장 스크립트 -->
+<script>
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const newAccess = urlParams.get("access_token");
+        const newRefresh = urlParams.get("refresh_token");
+
+        // ✅ 토큰이 쿼리스트링으로 온 경우 저장
+        if (newAccess && newRefresh) {
+            localStorage.setItem("access_token", newAccess);
+            localStorage.setItem("refresh_token", newRefresh);
+
+            // ✅ 쿼리스트링 제거 (URL 깔끔하게)
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        // ✅ 저장된 토큰 확인 → 없으면 리디렉트
+        const access = localStorage.getItem("access_token");
+        const refresh = localStorage.getItem("refresh_token");
+
+        if (!access || !refresh) {
+            alert("로그인 후 이용 가능한 서비스입니다.");
+            window.location.href = "/unauthorized";
+        }
+    };
+</script>
 </html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>접근 불가</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            padding-top: 100px;
+            background-color: #f9f9f9;
+        }
+        .unauthorized-box {
+            display: inline-block;
+            padding: 40px;
+            border: 2px solid #e74c3c;
+            border-radius: 12px;
+            background-color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .unauthorized-box h1 {
+            color: #e74c3c;
+            font-size: 32px;
+        }
+        .unauthorized-box p {
+            font-size: 18px;
+            color: #555;
+            margin: 16px 0;
+        }
+        .unauthorized-box a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 24px;
+            background-color: #fae100;
+            color: #000;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="unauthorized-box">
+        <h1>🔒 접근 권한이 없습니다</h1>
+        <p>이 서비스는 로그인 후 이용 가능합니다.</p>
+        <a href="/login">카카오 로그인 하러 가기</a>
+    </div>
+</body>
+</html>

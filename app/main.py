@@ -14,13 +14,31 @@ from app.services import get_openai_response, save_generated_text, build_forecas
 from app.redis_cache import cache_forecast, get_cached_forecast
 from app.transformer import run_forecasting, ChatRequest
 from starlette.responses import JSONResponse
+from app.routes import protected
+from app.auth import router as auth_router  # 카카오 로그인 라우터
+from app.routes.token_refresh import router as refresh_router
+
 
 app = FastAPI()
 
 
+# 카카오 로그인
+app.include_router(auth_router)
+
+# ✅ 보호된 라우터 등록
+app.include_router(protected.router)
+app.include_router(refresh_router)
+
+templates = Jinja2Templates(directory="templates")
+
+@app.get("/unauthorized", response_class=HTMLResponse)
+async def unauthorized_page(request: Request):
+    return templates.TemplateResponse("unauthorized.html", {"request": request})
+
 @app.get("/status")
 async def read_root():
     return {"message": "MongoDB 연결 성공!"}
+
 
 @app.post("/generate_text/")
 async def generate_text_and_save(request: TextRequest):
