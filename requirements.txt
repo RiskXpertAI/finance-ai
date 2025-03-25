@@ -8,8 +8,6 @@ openai
 pandas
 numpy
 scikit-learn
-pymongo
 python-multipart
-motor[srv]
 redis
 PyJWT

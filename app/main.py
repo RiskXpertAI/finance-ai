@@ -15,8 +15,7 @@ from app.redis_cache import cache_forecast, get_cached_forecast
 from app.transformer import run_forecasting, ChatRequest
 from starlette.responses import JSONResponse
 from app.routes import protected
-from app.auth import router as auth_router  # 카카오 로그인 라우터
-from app.routes.token_refresh import router as refresh_router
+from app.routes.auth import router as auth_router, KAKAO_CLIENT_ID, KAKAO_REDIRECT_URI  # 카카오 로그인 라우터
 
 
 app = FastAPI()
@@ -27,13 +26,9 @@ app.include_router(auth_router)
 
 # ✅ 보호된 라우터 등록
 app.include_router(protected.router)
-app.include_router(refresh_router)
 
 templates = Jinja2Templates(directory="templates")
 
-@app.get("/unauthorized", response_class=HTMLResponse)
-async def unauthorized_page(request: Request):
-    return templates.TemplateResponse("unauthorized.html", {"request": request})
 
 @app.get("/status")
 async def read_root():
@@ -63,11 +58,24 @@ async def fetch_financial_data():
 templates = Jinja2Templates(directory="templates")  # HTML 파일이 들어갈 폴더 지정
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/", response_class=HTMLResponse)
-async def chatbot_page(request: Request):
-    """ 챗봇 UI 페이지 제공 """
-    return templates.TemplateResponse("index.html", {"request": request})
 
+# 정적 파일 서빙
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 템플릿 디렉토리 설정
+templates = Jinja2Templates(directory="templates")
+
+# mainpage.html 렌더링 ("/main" 라우트 대응)
+@app.get("/main", response_class=HTMLResponse)
+async def render_mainpage(request: Request):
+    return templates.TemplateResponse("mainpage.html", {"request": request})
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "client_id": KAKAO_CLIENT_ID,
+        "redirect_uri": KAKAO_REDIRECT_URI
+    })
 
 
 @app.post("/predict")
