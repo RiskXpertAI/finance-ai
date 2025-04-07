@@ -216,30 +216,3 @@ class ChatRequest(BaseModel):
     prompt: str
     months: int
 
-
-@app.post("/chat/")
-async def chat(request: ChatRequest):
-    user_input = request.prompt  # 사용자가 입력한 질문
-    months = request.months  # 선택한 개월 수
-
-    # 1. transformer 예측값 가져오기 (httpx 사용)
-    async with httpx.AsyncClient() as client:  # httpx.AsyncClient 사용
-        predict_response = await client.post(
-            "http://localhost:8000/predict",  # 예측 엔드포인트로 수정 필요
-            data={"months": months, "window_size": 12}
-        )
-
-    if predict_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="예측 오류")
-
-    forecast = predict_response.json()  # 예측 결과 가져오기
-    forecast_text = "\n".join([f"{k}: {v:.2f}" for k, v in forecast.items() if k != "TIME"])
-
-    # 2. 프롬프트 생성
-    prompt = build_forecast_prompt(user_input, forecast)
-
-    # 3. GPT에 요청
-    response_text = await get_openai_response(prompt)
-    await save_generated_text(user_input, response_text)
-
-    return {"response": response_text}  # JSON 형식으로 응답

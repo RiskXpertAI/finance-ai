@@ -8,8 +8,16 @@ document.addEventListener("DOMContentLoaded", function () {
         event.preventDefault(); // 기본 제출 방지
 
         const userMessage = userInput.value.trim();
-        const selectedMonth = monthSelect.value; // ✅ 선택된 개월 수 가져오기
+        let selectedMonth = monthSelect.value; // ✅ 선택된 개월 수 가져오기
         if (!userMessage) return;
+
+        // ✅ 문자열을 정수로 변환
+        selectedMonth = parseInt(selectedMonth, 10);
+
+        if (isNaN(selectedMonth)) {
+            console.error("선택된 개월 수가 유효한 숫자가 아닙니다.");
+            return;
+        }
 
         // ✅ 사용자 메시지 추가
         const userMsgElement = document.createElement("div");
@@ -23,8 +31,13 @@ document.addEventListener("DOMContentLoaded", function () {
         // ✅ 서버에 메시지 전송
         const response = await fetch("/chat/", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ prompt: userMessage }),
+            headers: {
+                "Content-Type": "application/json"  // JSON 형식으로 보내기
+            },
+            body: JSON.stringify({
+                prompt: userMessage,  // 사용자가 입력한 메시지
+                months: selectedMonth  // 선택한 개월 수
+            }),
         });
 
         if (response.ok) {
@@ -43,4 +56,3 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
-

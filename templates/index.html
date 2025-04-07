@@ -3,82 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RiskXpertAI 챗봇</title>
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <title>Login</title>
     <script defer src="/static/app.js"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <img src="/static/images/polarbear.png" class="character">
-
-    <div class="main-container">
-        <!-- ✅ 상단 헤더 (제목 + 로그인) -->
-        <div class="header">
-            <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
-            <a href="/login" class="kakao-login-button">카카오로 로그인</a>
-        </div>
-
-        <div class="container">
-            <!-- ✅ 챗봇 대화창 -->
-            <div class="chat-section">
-                <div class="chat-box" id="chat-box">
-                    <div class="message bot">안녕하세요! 원하시는 개월 수를 선택하고 메시지를 입력해주세요.</div>
-                </div>
-            </div>
-
-            <!-- ✅ 입력 및 옵션 선택 -->
-            <div class="input-container">
-                <div class="input-section">
-                    <label for="months">📅 개월 수 선택:</label>
-                    <select id="months">
-                        <option value="1">1개월 후</option>
-                        <option value="2">2개월 후</option>
-                        <option value="3">3개월 후</option>
-                        <option value="4">4개월 후</option>
-                        <option value="5">5개월 후</option>
-                        <option value="6">6개월 후</option>
-                        <option value="7">7개월 후</option>
-                        <option value="8">8개월 후</option>
-                        <option value="9">9개월 후</option>
-                        <option value="10">10개월 후</option>
-                        <option value="11">11개월 후</option>
-                        <option value="12">12개월 후</option>
-                    </select>
-
-                    <form id="chat-form">
-                        <input type="text" name="prompt" id="user-input" placeholder="메시지를 입력하세요..." required />
-                        <button type="submit">전송</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div class="login-container">
+        <h1>🔵 RiskXpertAI 로그인</h1>
+            <a href="https://kauth.kakao.com/oauth/authorize?client_id={{ client_id }}&redirect_uri={{ redirect_uri }}&response_type=code" class="kakao-login-button">
+                    카카오로 로그인
+            </a>
     </div>
-</body>
+    <script>
+            window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const newAccess = urlParams.get("access_token");
+            const newRefresh = urlParams.get("refresh_token");
 
-<!-- ✅ 로그인 후 토큰 저장 스크립트 -->
-<script>
-    window.onload = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const newAccess = urlParams.get("access_token");
-        const newRefresh = urlParams.get("refresh_token");
-
-        // ✅ 토큰이 쿼리스트링으로 온 경우 저장
-        if (newAccess && newRefresh) {
+            if (newAccess && newRefresh) {
+            // 토큰 저장
             localStorage.setItem("access_token", newAccess);
             localStorage.setItem("refresh_token", newRefresh);
 
-            // ✅ 쿼리스트링 제거 (URL 깔끔하게)
-            window.history.replaceState({}, document.title, "/");
+            // 🔁 쿼리 파라미터 제거 후 main 이동
+            window.location.href = "/main";
+            return;
         }
 
-        // ✅ 저장된 토큰 확인 → 없으면 리디렉트
-        const access = localStorage.getItem("access_token");
-        const refresh = localStorage.getItem("refresh_token");
+            // 기존 토큰이 이미 저장되어 있다면만 이동
+            const access = localStorage.getItem("access_token");
+            const refresh = localStorage.getItem("refresh_token");
 
-        if (!access || !refresh) {
-            alert("로그인 후 이용 가능한 서비스입니다.");
-            window.location.href = "/unauthorized";
+            if (access && refresh) {
+            window.location.href = "/main";
         }
-    };
-</script>
+
+            // 그렇지 않으면 그냥 로그인 페이지 유지
+        };
+    </script>
+</body>
 </html>

@@ -5,6 +5,7 @@ from app.config import MONGO_URI
 client = AsyncIOMotorClient(MONGO_URI)
 database = client["financeai"]  # ← 이거 확실하게 DB 지정
 
+
 # ✅ OpenAI 응답 컬렉션
 generated_texts_collection = database.get_collection("generated_texts")
 

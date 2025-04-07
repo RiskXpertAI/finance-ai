@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="financeai@localhost" uuid="cf76be03-4d4b-456c-a614-71bd3a4b9f75">
+    <data-source source="LOCAL" name="financeai@cluster0.xwyke.mongodb.net" uuid="a6aa50b3-1560-46cb-a5d8-fcf0a0b85097">
       <driver-ref>mongo</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.dbschema.MongoJdbcDriver</jdbc-driver>
-      <jdbc-url>mongodb://localhost:27017/financeai</jdbc-url>
+      <jdbc-url>mongodb+srv://cluster0.xwyke.mongodb.net/financeai?retryWrites=true&amp;w=majority</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
+        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="@redis-11721.c340.ap-northeast-2-1.ec2.redns.redis-cloud.com" uuid="51e1a7dd-5b51-45bb-9cfa-a44ab9f7cb21">
+      <driver-ref>redis</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>jdbc.RedisDriver</jdbc-driver>
+      <jdbc-url>jdbc:redis://redis-11721.c340.ap-northeast-2-1.ec2.redns.redis-cloud.com:11721/</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
+        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
+      </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>
