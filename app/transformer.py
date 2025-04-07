@@ -212,6 +212,10 @@ app = FastAPI()
 
 
 # 1. Pydantic 모델을 정의하여 JSON 데이터 받기
+from openai import OpenAI
+from app.config import OPENAI_API_KEY
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 class ChatRequest(BaseModel):
     prompt: str
     months: int

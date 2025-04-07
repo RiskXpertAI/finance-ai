@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import logging
+from fastapi.responses import StreamingResponse
 
-import httpx
+from openai import OpenAI
 from pydantic import ValidationError
 from starlette.staticfiles import StaticFiles
 
@@ -24,7 +26,7 @@ from app.routes.auth import router as auth_router, KAKAO_CLIENT_ID, KAKAO_REDIRE
 logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI()
-
+client=OpenAI()
 
 # 카카오 로그인
 app.include_router(auth_router)
@@ -91,83 +93,45 @@ async def predict(months: int = Form(...), window_size: int = Form(12)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@app.post("/chat/stream/")
+async def stream_chat(request: ChatRequest):
+    user_input = request.prompt
+    months = request.months
 
+    question_hash = hashlib.md5(user_input.encode()).hexdigest()
+    cache_key = f"forecast_{months}_months_{question_hash}"
+    cached_response = get_cached_forecast(cache_key)
 
-# @app.post("/chat/")
-# async def chat(request: ChatRequest):
-#     user_input = request.prompt  # 사용자가 입력한 질문
-#     months = request.months  # 선택한 개월 수
-#
-#     # 1. transformer 예측값 가져오기 (httpx 사용)
-#     async with httpx.AsyncClient() as client:  # httpx.AsyncClient 사용
-#         predict_response = await client.post(
-#             # "http://localhost:8000/predict",  # 예측 엔드포인트로 수정 필요
-#             "http://host.docker.internal:8000/predict",  # 도커 내에서 외부 API 호출 시 수정 필요
-#
-#             data={"months": months, "window_size": 12}
-#         )
-#
-#     if predict_response.status_code != 200:
-#         raise HTTPException(status_code=500, detail="예측 오류")
-#
-#     forecast = predict_response.json()  # 예측 결과 가져오기
-#     forecast_text = "\n".join([f"{k}: {v:.2f}" for k, v in forecast.items() if k != "TIME"])
-#
-#     # 2. 프롬프트 생성
-#     prompt = build_forecast_prompt(user_input, forecast)
-#
-#     # 3. GPT에 요청
-#     response_text = await get_openai_response(prompt)
-#     await save_generated_text(user_input, response_text)
-#
-#     return {"response": response_text}  # JSON 형식으로 응답
+    if cached_response:
+        async def stream_cached():
+            for c in cached_response:
+                yield c
+        return StreamingResponse(stream_cached(), media_type="text/plain")
 
+    # 1. 예측값 생성
+    forecast = await call_prediction_api(months, 12)
+    prompt = build_forecast_prompt(user_input, forecast)
 
-# Redis 캐시에서 예측값을 확인하는 함수
-@app.post("/chat/")
-async def chat(request: ChatRequest):
-    try:
-        user_input = request.prompt  # 사용자가 입력한 질문
-        months = request.months  # 선택한 개월 수
-        logging.debug(f'user_input: {user_input}, months: {months}')
-    except ValidationError as e:
-        logging.debug(f"Validation error: {e.errors()}")  # 유효성 검사 오류 출력
-        raise HTTPException(status_code=422, detail=f"Validation error: {e.errors()}")
+    # 2. GPT-1 호출 (요약 프롬프트)
+    gpt_response = await get_openai_response(prompt)
 
-    # 서버에서 데이터 확인을 위한 추가 로그
-    logging.debug(f"User input: {user_input}, months: {months}")
+    # 3. GPT-2 호출 (스트리밍)
+    async def generate_final_response():
+        full_response = ""
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": gpt_response}],
+            stream=True
+        )
 
-    # 질문을 해시화하여 캐시 키를 다르게 생성
-    question_hash = hashlib.md5(user_input.encode()).hexdigest()  # 질문을 해시화
-    cache_key = f"forecast_{months}_months_{question_hash}"  # 캐시 키에 질문 해시 추가
-    logging.debug(f"🔍 Redis 캐시에서 예측값을 확인 중... 캐시 키: {cache_key}")
+        for chunk in response:
+            content = chunk.choices[0].delta.content
+            if content:
+                full_response += content
+                yield content
 
-    forecast = get_cached_forecast(cache_key)
-    if forecast:
-        # Redis에 예측값이 이미 있으면 그대로 반환
-        logging.debug(f"🔵 Redis에서 캐시된 예측값 로드 성공: {forecast}")
-        return forecast  # 예측값을 그대로 반환 (GPT 로직은 돌리지 않음)
+        # ✅ 캐시와 Mongo 저장 (await 가능!)
+        cache_forecast(cache_key, full_response)
+        await save_generated_text(user_input, full_response)
 
-    else:
-        # Redis에 예측값이 없으면 예측 API를 호출하고, GPT 로직을 돌린다.
-        logging.debug(f"🔴 Redis에 캐시된 예측값이 없어서 새로운 예측을 진행합니다.")
-        forecast = await call_prediction_api(months, 12)  # 예측 API 호출
-        logging.debug(f"🟢 예측 결과가 성공적으로 반환되었습니다: {forecast}")
-
-        # 예측값을 사용하여 GPT 응답 생성
-        prompt_for_gpt = build_forecast_prompt(user_input, forecast)
-        logging.debug(f"🔵 생성된 GPT 프롬프트: {prompt_for_gpt}")
-
-        # GPT-1 응답 생성
-        gpt_response = await get_openai_response(prompt_for_gpt)
-        logging.debug(f"🟢 GPT-1 응답: {gpt_response}")
-
-        # GPT-2로 추가 답변 생성
-        final_response = await get_scenario_based_answer(gpt_response)
-        logging.debug(f"🟢 GPT-2 응답: {final_response}")
-
-        # 최종 GPT 응답을 Redis에 저장
-        cache_forecast(cache_key, final_response)  # 최종 GPT 응답을 Redis에 캐시
-        await save_generated_text(user_input, final_response)  # MongoDB에 저장
-
-        return final_response
+    return StreamingResponse(generate_final_response(), media_type="text/plain")
