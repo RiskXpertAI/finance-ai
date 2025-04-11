@@ -3,9 +3,13 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from app.database import financial_data_collection  # ✅ 금융 데이터 컬렉션 가져오기
+import os
+from dotenv import load_dotenv
 
-API_KEY = "DU39KYMCPH849TZL4ELE"
-BASE_URL = "https://ecos.bok.or.kr/api/StatisticSearch"
+load_dotenv()
+
+API_KEY = os.getenv("INDICATOR_API_KEY")
+BASE_URL = os.getenv("INDICATOR_BASE_URL")
 
 # ✅ 데이터 매핑 정보
 code_list = {'722Y001': 'M', '901Y009': 'M', '200Y102': 'Q', '731Y004': 'M', '404Y014':'M'}
