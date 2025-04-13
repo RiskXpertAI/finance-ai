@@ -4,50 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RiskXpertAI 챗봇</title>
-    <script defer src="/static/app.js"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <div class="main-container">
-        <!-- 상단 헤더 -->
-        <div class="header">
-            <h1 class="chat-title">🔵 RiskXpertAI 챗봇</h1>
-            <button id="logout-button">로그아웃</button>
-        </div>
+<div class="main-container">
 
-        <div class="container">
-            <div class="chat-section">
-                <div class="chat-box" id="chat-box">
-                    <div class="message bot">안녕하세요! 원하시는 개월 수를 선택하고 메시지를 입력해주세요.</div>
-                </div>
-            </div>
-
-            <div class="input-container">
-                <label for="months">📅 개월 수 선택:</label>
-                <select id="months">
-                    <option value="1">1개월 후</option>
-                    <option value="2">2개월 후</option>
-                    <option value="3">3개월 후</option>
-                    <option value="4">4개월 후</option>
-                    <option value="5">5개월 후</option>
-                    <option value="6">6개월 후</option>
-                    <option value="7">7개월 후</option>
-                    <option value="8">8개월 후</option>
-                    <option value="9">9개월 후</option>
-                    <option value="10">10개월 후</option>
-                    <option value="11">11개월 후</option>
-                    <option value="12">12개월 후</option>
-                </select>
-
-                <form id="chat-form">
-                    <input type="text" name="prompt" id="user-input" placeholder="메시지를 입력하세요..." required />
-                    <button type="submit">전송</button>
-                </form>
-            </div>
-        </div>
+    <!-- 상단 헤더 -->
+    <div class="header">
+        <h1 class="chat-title">RiskXpertAI 챗봇</h1>
     </div>
-        <script>
+
+    <div class="container">
+
+        <!-- 채팅창 -->
+        <div class="chat-section">
+            <div class="chat-box" id="chat-box">
+                <div class="message bot">안녕하세요! 원하시는 개월 수를 선택하고 메시지를 입력해주세요.</div>
+            </div>
+        </div>
+
+        <!-- 개월 수 선택 -->
+        <div class="select-row">
+            <label for="months">개월 수 선택:</label>
+            <select id="months">
+                <option value="1">1개월 후</option>
+                <option value="2">2개월 후</option>
+                <option value="3">3개월 후</option>
+                <option value="4">4개월 후</option>
+                <option value="5">5개월 후</option>
+                <option value="6">6개월 후</option>
+                <option value="7">7개월 후</option>
+                <option value="8">8개월 후</option>
+                <option value="9">9개월 후</option>
+                <option value="10">10개월 후</option>
+                <option value="11">11개월 후</option>
+                <option value="12">12개월 후</option>
+            </select>
+        </div>
+
+        <!-- 입력창 + 전송 버튼 -->
+        <form id="chat-form" class="input-row">
+            <input type="text" name="prompt" id="user-input" placeholder="메시지를 입력하세요..." required />
+            <button type="submit">전송</button>
+        </form>
+
+    </div>
+</div>
+<script>
+
     window.onload = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const newAccess = urlParams.get("access_token");
