@@ -11,6 +11,8 @@ services:
     restart: always
     expose:
       - "8000"
+    env_file:
+      - .env
     environment:
       - MONGO_URI=${MONGO_URI}
       - REDIS_URL=${REDIS_URL}
@@ -19,7 +21,6 @@ services:
       - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
       - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
       - SECRET_KEY=${SECRET_KEY}
-
 
   nginx:
     build:
@@ -34,6 +35,7 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/html:/var/www/html   # 인증파일 공유 경로 추가
     depends_on:
       - web
 
@@ -43,8 +45,7 @@ services:
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do sleep 6h & wait $${!}; certbot renew; done"
-
+      - ./nginx/html:/var/www/html   # 인증파일 공유 경로
 volumes:
   certbot-etc:
   certbot-var:

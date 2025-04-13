@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse
 
 from fastapi import FastAPI, HTTPException, Form, Request
 from app.services import get_openai_response, save_generated_text, build_forecast_prompt, get_scenario_based_answer
-from app.redis_cache import cache_forecast, get_cached_forecast, call_prediction_api
+from app.redis_cache import cache_forecast, get_cached_forecast, call_prediction_api, get_redis_client
 from app.transformer import run_forecasting, ChatRequest
 from starlette.responses import JSONResponse
 from app.routes import protected
@@ -36,6 +36,23 @@ app.include_router(protected.router)
 
 templates = Jinja2Templates(directory="templates")
 
+
+@app.get("/health/mongo")
+async def mongo_health_check():
+    try:
+        await database.command("ping")
+        return {"status": "ok", "msg": "MongoDB connected"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health/redis")
+async def redis_health_check():
+    try:
+        r = await get_redis_client()
+        await r.ping()
+        return {"status": "ok", "msg": "Redis connected"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/status")
 async def read_root():

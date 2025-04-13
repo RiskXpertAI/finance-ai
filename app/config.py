@@ -15,7 +15,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_URI = os.getenv("MONGO_URI")
 REDIS_URL = os.getenv("REDIS_URL")
-
+PREDICT_API_URL = os.getenv("PREDICT_API_URL")
 # 값이 제대로 불러와졌는지 확인
 print(f"🔍 OPENAI_API_KEY loaded successful")  # 값이 출력되는지 확인
 print(f"🔍 MONGO_URI: {MONGO_URI}")  # 값이 출력되는지 확인

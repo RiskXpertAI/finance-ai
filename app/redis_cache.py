@@ -3,10 +3,16 @@ import httpx
 import redis
 import json
 from fastapi import HTTPException
-from app.config import REDIS_URL
+from app.config import REDIS_URL,PREDICT_API_URL
+
 
 # Redis 클라이언트 생성
 redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
+
+# ✅ Redis Client 반환 (싱크 방식)
+def get_redis_client():
+    return redis_client
+
 
 # 예측 데이터를 Redis에 저장하는 함수
 def cache_forecast(key: str, forecast_data: dict, expiration_time=3600):
@@ -44,6 +50,7 @@ async def call_prediction_api(months: int, window_size: int):
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:  # 타임아웃 10초로 설정
             predict_response = await client.post(
+                PREDICT_API_URL,
                 "https://59b7-118-131-63-236.ngrok-free.app/predict",
                 data={"months": months, "window_size": window_size}
             )
