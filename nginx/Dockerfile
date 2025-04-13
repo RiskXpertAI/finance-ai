@@ -1,20 +1,2 @@
-events {}
-
-http {
-    server {
-        listen 80;
-        server_name 15.164.188.67;
-
-        location /.well-known/acme-challenge/ {
-            root /var/lib/letsencrypt;
-        }
-
-        location / {
-            proxy_pass http://web:8000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
-}
+FROM nginx:stable-alpine
+COPY nginx.conf /etc/nginx/nginx.conf
