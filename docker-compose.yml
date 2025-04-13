@@ -22,12 +22,6 @@ services:
     depends_on:
       - redis
 
-  redis:
-    image: redis:latest
-    container_name: redis
-    restart: always
-    ports:
-      - "11721:11721"
 
   nginx:
     build:
