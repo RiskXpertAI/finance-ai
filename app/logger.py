@@ -1,13 +1,15 @@
 import os
 import logging
 
-# 운영/개발 구분
 ENV = os.getenv("ENV", "development")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
 
-if ENV == "production":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-else:
-    logging.basicConfig(level=logging.DEBUG)
+log_format = "%(asctime)s - %(levelname)s - %(message)s"
+
+# 기본 로깅 설정
+logging.basicConfig(level=LOG_LEVEL, format=log_format)
+
+# noisy 라이브러리 로그레벨 낮추기
+logging.getLogger("pymongo").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.INFO)
+logging.getLogger("uvicorn").setLevel(logging.INFO)

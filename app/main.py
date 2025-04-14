@@ -21,6 +21,7 @@ from app.transformer import run_forecasting, ChatRequest
 from starlette.responses import JSONResponse
 from app.routes import protected
 from app.routes.auth import router as auth_router, KAKAO_CLIENT_ID, KAKAO_REDIRECT_URI  # 카카오 로그인 라우터
+from app.utils.slack_alert import send_slack_alert
 
 app = FastAPI()
 client=OpenAI()
@@ -149,3 +150,9 @@ async def stream_chat(request: ChatRequest):
     except Exception as e:
         logging.error(f"[Chat Stream] 처리 실패 | Error: {e}")
         raise HTTPException(status_code=500, detail="챗봇 처리 실패")
+
+# test_slack_alert
+@app.get("/test/slack")
+async def test_slack_alert():
+    send_slack_alert("🔥 슬랙 알림 테스트입니다", level="ERROR")
+    return {"message": "슬랙 알림 전송 시도 완료"}
