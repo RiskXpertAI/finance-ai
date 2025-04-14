@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 코드 복사
 COPY . .
 
+# .env 운영용 복사
+COPY .env .env
+
 # 포트 열기
 EXPOSE 8000
 
