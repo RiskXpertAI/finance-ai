@@ -1,3 +1,33 @@
+// 토큰 처리
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const newAccess = urlParams.get("access_token");
+    const newRefresh = urlParams.get("refresh_token");
+
+    if (newAccess && newRefresh) {
+        localStorage.setItem("access_token", newAccess);
+        localStorage.setItem("refresh_token", newRefresh);
+        window.history.replaceState({}, document.title, "/main");
+    }
+
+    const access = localStorage.getItem("access_token");
+    const refresh = localStorage.getItem("refresh_token");
+
+    if (!access || !refresh) {
+        window.location.href = "/";
+    }
+
+    const logoutBtn = document.getElementById("logout-button");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", function () {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            window.location.href = "/";
+        });
+    }
+};
+
+// 채팅 처리
 document.addEventListener("DOMContentLoaded", function () {
     const chatForm = document.getElementById("chat-form");
     const chatBox = document.getElementById("chat-box");
@@ -8,16 +38,9 @@ document.addEventListener("DOMContentLoaded", function () {
         event.preventDefault();
 
         const userMessage = userInput.value.trim();
-        let selectedMonth = monthSelect.value;
-        if (!userMessage) return;
+        const selectedMonth = parseInt(monthSelect.value, 10);
+        if (!userMessage || isNaN(selectedMonth)) return;
 
-        selectedMonth = parseInt(selectedMonth, 10);
-        if (isNaN(selectedMonth)) {
-            console.error("선택된 개월 수가 유효한 숫자가 아닙니다.");
-            return;
-        }
-
-        // 사용자 메시지 출력
         const userMsgElement = document.createElement("div");
         userMsgElement.classList.add("message", "user");
         userMsgElement.textContent = `[${selectedMonth}개월] ${userMessage}`;
@@ -25,16 +48,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         userInput.value = "";
 
-        // 스트리밍 응답 요청
         const response = await fetch("/chat/stream/", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                prompt: userMessage,
-                months: selectedMonth
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: userMessage, months: selectedMonth }),
         });
 
         if (!response.ok || !response.body) {
@@ -52,9 +69,8 @@ document.addEventListener("DOMContentLoaded", function () {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value);
-            botMsgElement.textContent += chunk;
-            chatBox.scrollTop = chatBox.scrollHeight; // 자동 스크롤
+            botMsgElement.textContent += decoder.decode(value);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     });
 });
