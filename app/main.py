@@ -36,23 +36,9 @@ app.include_router(protected.router)
 
 templates = Jinja2Templates(directory="templates")
 
+from app.health import api_router as health_router
 
-@app.get("/health/mongo")
-async def mongo_health_check():
-    try:
-        await database.command("ping")
-        return {"status": "ok", "msg": "MongoDB connected"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health/redis")
-async def redis_health_check():
-    try:
-        r = await get_redis_client()
-        await r.ping()
-        return {"status": "ok", "msg": "Redis connected"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(health_router)
 
 @app.get("/status")
 async def read_root():
