@@ -14,3 +14,5 @@ __pycache__/
 
 # Git 정보 무시
 .git
+
+USAGE.md

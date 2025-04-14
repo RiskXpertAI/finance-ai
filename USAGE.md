@@ -1,7 +1,15 @@
-# 개발용 Dockerfile
-docker build -f Dockerfile.dev -t financeai-dev .
-docker run -e ENV=development -p 8000:8000 financeai-dev
+# 코드 변경후 사용
+git pull origin main
+sudo docker cp .env fastapi:/app/.env
+finance-ai$ sudo docker-compose down
+finance-ai$ sudo docker-compose up -d --build
 
-# 운영용 Dockerfile.dev
-docker build -f Dockerfile -t financeai-prod .
-docker run -e ENV=production -p 8000:8000 financeai-prod
+
+
+
+# ———————————
+# 백업
+sudo docker cp certbot:/etc/letsencrypt ./letsencrypt-backup
+
+# 복구
+sudo docker cp ./letsencrypt-backup/. certbot:/etc/letsencrypt/
