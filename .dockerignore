@@ -11,3 +11,6 @@ __pycache__/
 # 환경 설정 파일
 .env
 *.env
+
+# Git 정보 무시
+.git
