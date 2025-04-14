@@ -51,7 +51,6 @@ async def call_prediction_api(months: int, window_size: int):
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:  # 타임아웃 10초로 설정
             predict_response = await client.post(
                 PREDICT_API_URL,
-                "https://59b7-118-131-63-236.ngrok-free.app/predict",
                 data={"months": months, "window_size": window_size}
             )
             predict_response.raise_for_status()  # 상태 코드가 200이 아니면 예외 발생
