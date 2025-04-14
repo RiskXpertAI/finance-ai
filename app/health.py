@@ -18,8 +18,10 @@ async def mongo_health_check():
 @api_router.get("/health/redis")
 async def redis_health_check():
     try:
-        r = await get_redis_client()
-        await r.ping()
+        r = get_redis_client()
+        r.ping()  # ✅ await 제거
+        send_slack_alert("[Redis OK] 연결 성공")
         return {"status": "ok", "msg": "Redis connected"}
     except Exception as e:
+        send_slack_alert(f"[Redis Error] {e}")
         raise HTTPException(status_code=500, detail=str(e))
