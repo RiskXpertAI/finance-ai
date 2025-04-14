@@ -8,7 +8,8 @@ SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
 def send_slack_alert(message: str, level: str = "INFO"):
     if not SLACK_WEBHOOK_URL:
-        logging.warning("Slack Webhook URL이 없습니다.")
+        logging.warning("[Slack] Slack Webhook URL이 없음")
+
         return
 
     # 성공, 디버깅은 로그만
