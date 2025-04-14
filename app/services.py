@@ -4,6 +4,7 @@ import openai
 
 from app.database import generated_texts_collection
 from app.config import OPENAI_API_KEY
+from app.utils.slack_alert import send_slack_alert
 
 # OpenAI Client 생성
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
@@ -12,12 +13,17 @@ client = openai.OpenAI(api_key=OPENAI_API_KEY)
 async def get_openai_response(prompt: str):
     logging.info(f"[OpenAI] 요청 시작 | Prompt: {prompt}")
 
-    loop = asyncio.get_running_loop()
-    response = await loop.run_in_executor(None, lambda: client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=150,
-    ))
+    try:
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, lambda: client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+        ))
+    except Exception as e:
+        logging.error(f"[OpenAI] API 호출 실패 | Error: {e}")
+        send_slack_alert(f"[OpenAI] API 호출 실패 | Error: {e}", level="ERROR")
+        raise
 
     logging.info(f"[OpenAI] 원본 응답 수신 완료")
     generated_text = response.choices[0].message.content.strip()
@@ -34,11 +40,16 @@ async def save_generated_text(prompt: str, generated_text: str):
         "prompt": prompt,
         "generated_text": generated_text
     }
-    result = await generated_texts_collection.insert_one(document)
+
+    try:
+        result = await generated_texts_collection.insert_one(document)
+    except Exception as e:
+        logging.error(f"[MongoDB] 저장 실패 | Error: {e}")
+        send_slack_alert(f"[MongoDB] 저장 실패 | Error: {e}", level="ERROR")
+        raise
 
     logging.info(f"[MongoDB] 저장 완료 | Document ID: {result.inserted_id}")
     return result.inserted_id
-
 
 # ✅ MongoDB 최신 데이터 조회
 async def get_stored_text():
