@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 코드 복사
 COPY . .
-
+COPY lstm_model.pt lstm_model.pt
 
 # 포트 열기
 EXPOSE 8000
