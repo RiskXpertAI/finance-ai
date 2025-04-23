@@ -63,9 +63,9 @@ async def get_stored_text():
 
 
 # ✅ Forecast 프롬프트 생성
-def build_forecast_prompt(user_input: str, forecast: dict):
+def build_forecast_prompt(user_input: str, forecast: dict, months: int):
     forecast_text = f"""
-3개월 후 주요 지표는 다음과 같습니다:
+{months}개월 후 주요 지표는 다음과 같습니다:
 - GDP: {forecast['GDP']:.3f}
 - 환율: {forecast['환율']:.2f}
 - 생산자물가지수: {forecast['생산자물가지수']:.2f}

@@ -16,3 +16,6 @@ __pycache__/
 .git
 
 USAGE.md
+
+
+lstm_model.pt

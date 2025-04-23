@@ -13,3 +13,5 @@ __pycache__/
 *.env
 
 USAGE.md
+
+lstm_model.pt

@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 코드 복사
 COPY . .
 
+
 # 포트 열기
 EXPOSE 8000
 

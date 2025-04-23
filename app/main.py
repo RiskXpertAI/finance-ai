@@ -1,23 +1,24 @@
 import hashlib
 from http.client import HTTPException
-from app.logger import *  # 로깅 설정만 로드
-
+from app.logger import *
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-
+import torch
 from openai import OpenAI
 from starlette.staticfiles import StaticFiles
 
 from app.indicator import fetch_and_store_financial_data
-from app.models import TextRequest
+from app.models import TextRequest, ChatRequest
 
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 
 
 from fastapi import FastAPI, Form, Request
-from app.services import get_openai_response, save_generated_text, build_forecast_prompt, get_scenario_based_answer
-from app.redis_cache import cache_forecast, get_cached_forecast, call_prediction_api, get_redis_client
-from app.transformer import run_forecasting, ChatRequest
+
+from app.server_predict import load_recent_data, predict_nth_future, TimeSeriesLSTMModel
+from app.services import get_openai_response, save_generated_text, build_forecast_prompt
+from app.redis_cache import cache_forecast, get_cached_forecast, call_prediction_api
 from starlette.responses import JSONResponse
 from app.routes import protected
 from app.routes.auth import router as auth_router, KAKAO_CLIENT_ID, KAKAO_REDIRECT_URI  # 카카오 로그인 라우터
@@ -70,8 +71,6 @@ async def fetch_financial_data():
 
 """ --------------------------------front_end--------------------------------------"""
 
-templates = Jinja2Templates(directory="templates")  # HTML 파일이 들어갈 폴더 지정
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # 정적 파일 서빙
@@ -93,18 +92,63 @@ async def index(request: Request):
     })
 
 
+
+# FastAPI predict 엔드포인트
+import traceback
+
 @app.post("/predict")
 async def predict(months: int = Form(...), window_size: int = Form(12)):
     try:
-        result = run_forecasting(window_size=window_size, forecast_horizon=months)
+        feature_cols = [
+            "GDP", "환율", "생산자물가지수", "소비자물가지수", "금리",
+            "GDP_MA3", "GDP_DIFF", "GDP_PCT",
+            "환율_MA3", "환율_DIFF", "환율_PCT",
+            "생산자물가지수_MA3", "생산자물가지수_DIFF", "생산자물가지수_PCT",
+            "소비자물가지수_MA3", "소비자물가지수_DIFF", "소비자물가지수_PCT",
+            "금리_MA3", "금리_DIFF", "금리_PCT"
+        ]
+        target_cols = ["GDP", "환율", "생산자물가지수", "소비자물가지수", "금리"]
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = TimeSeriesLSTMModel(
+            input_size=len(feature_cols),
+            output_size=len(target_cols),
+            hidden_size=256,
+            num_layers=2,
+            dropout=0.2
+        )
+        model.load_state_dict(torch.load("lstm_model.pt", map_location=device))
+
+        recent_input, target_scaler, last_time = load_recent_data(feature_cols, target_cols, window_size)
+        pred_scaled = predict_nth_future(model, recent_input, device=device)
+        pred_scaled_2d = pred_scaled.reshape(1, -1)
+        pred_real = target_scaler.inverse_transform(pred_scaled_2d).flatten().astype(float)
+
+
+        # 미래 TIME 계산
+        base_year = int(str(last_time)[:4])
+        base_mon = int(str(last_time)[4:])
+        target_mon = base_mon + months
+        target_year = base_year
+        while target_mon > 12:
+            target_mon -= 12
+            target_year += 1
+        future_time = f"{target_year}{target_mon:02d}"
+
+        result = {**dict(zip(target_cols, pred_real)), "TIME": future_time}
+
         return JSONResponse(content=result)
+
     except Exception as e:
+        logging.error(f"❌ 예측 에러: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 @app.post("/chat/stream/")
 async def stream_chat(request: ChatRequest):
     user_input = request.prompt
     months = request.months
+    print("months: ",months)
 
     logging.info(f"[Chat Stream] 요청 시작 | Prompt: {user_input} | Months: {months}")
 
@@ -124,7 +168,7 @@ async def stream_chat(request: ChatRequest):
         forecast = await call_prediction_api(months, 12)
         logging.info(f"[Chat Stream] 예측 데이터 생성 성공")
 
-        prompt = build_forecast_prompt(user_input, forecast)
+        prompt = build_forecast_prompt(user_input, forecast,months)
         gpt_response = await get_openai_response(prompt)
         logging.info(f"[Chat Stream] GPT 요약 응답 완료")
 
@@ -156,3 +200,4 @@ async def stream_chat(request: ChatRequest):
 async def test_slack_alert():
     send_slack_alert("🔥 슬랙 알림 테스트입니다", level="ERROR")
     return {"message": "슬랙 알림 전송 시도 완료"}
+
