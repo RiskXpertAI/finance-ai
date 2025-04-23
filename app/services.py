@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import openai
+from pymongo import MongoClient
 
 from app.database import generated_texts_collection
-from app.config import OPENAI_API_KEY
+from app.config import OPENAI_API_KEY, MONGO_URI
 from app.utils.slack_alert import send_slack_alert
 
 # OpenAI Client 생성
@@ -61,33 +62,56 @@ async def get_stored_text():
 
     return document
 
+def get_latest_data_from_db():
+    client = MongoClient(MONGO_URI)
+    db = client["financeai"]
+    collection = db["financial_data"]
+    latest = collection.find_one(sort=[("TIME", -1)], projection={"_id": 0})
+    print("[현재 데이터]", latest)  # ✅ 디버깅용 출력 추가
+    return latest
+
 
 # ✅ Forecast 프롬프트 생성
-def build_forecast_prompt(user_input: str, forecast: dict, months: int):
-    forecast_text = f"""
-{months}개월 후 주요 지표는 다음과 같습니다:
-- GDP: {forecast['GDP']:.3f}
-- 환율: {forecast['환율']:.2f}
-- 생산자물가지수: {forecast['생산자물가지수']:.2f}
-- 소비자물가지수: {forecast['소비자물가지수']:.2f}
-- 금리: {forecast['금리']:.2f}
-"""
+def build_forecast_prompt(user_input: str, forecast: dict, months: int, current_data: dict):
+    def f(val):
+        try:
+            return float(val)
+        except:
+            return 0.0
 
     prompt = f"""
-```{forecast_text}```
+당신은 한국의 거시경제 예측 전문가입니다. 아래 현재 및 예측 데이터를 기반으로 사용자의 질문에 답하세요.
 
-[Note]
-1. Summary는 400글자 내외로 작성.
-2. Summary는 {{\\n}}을 포함할 수 없다.
+[작성 지침]
+- 반드시 **정확한 수치 기반 비교**를 포함할 것
+- **논리적이고 자연스러운 문장**으로 구성
+- **경제 기사 스타일의 어휘** 사용 (예: 경기 둔화, 물가 상승 압력 등)
+- 어색하거나 불완전한 표현 금지 (예: "절 변화" 같은 잘못된 문장 제거)
+- 아래 형식을 엄격히 따를 것
 
-출력은 반드시 한글로 작성하며 다음 양식을 따른다:
+# 현재 시점 주요 경제 지표
+- GDP: {f(current_data['GDP']):.3f}
+- 환율: {f(current_data['환율']):.2f}
+- 생산자물가지수(PPI): {f(current_data['생산자물가지수']):.2f}
+- 소비자물가지수(CPI): {f(current_data['소비자물가지수']):.2f}
+- 금리: {f(current_data['금리']):.2f}
 
-Summary: {{```로 둘러싸인 글의 요약}}
+# {months}개월 후 예측된 경제 지표
+- GDP: {forecast['GDP']:.3f}
+- 환율: {forecast['환율']:.2f}
+- 생산자물가지수(PPI): {forecast['생산자물가지수']:.2f}
+- 소비자물가지수(CPI): {forecast['소비자물가지수']:.2f}
+- 금리: {forecast['금리']:.2f}
 
-사용자 질문: {user_input}
+# 사용자 질문
+{user_input}
+
+# 응답 형식 (형식 반드시 지켜야 함)
+Summary: {{```400자 내외의 한글 요약. 반드시 예측 금리 수치 포함```}}
+
+Reasoning: {{```현재와 예측 수치를 비교하고, 금리 변화의 원인을 수치 기반으로 설명```}}
 """
     return prompt
-
 
 # ✅ GPT-2 응답 처리
 async def get_scenario_based_answer(prompt: str):

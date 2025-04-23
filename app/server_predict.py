@@ -78,11 +78,27 @@ def load_recent_data(feature_cols, target_cols, window_size):
     return recent_input, target_scaler, last_time
 
 # 예측 함수
-def predict_nth_future(model, recent_data, device="cpu"):
+def predict_nth_future(model, recent_data, months=1, device="cpu"):
+    """
+    현재 입력 데이터(recent_data)를 기준으로, months개월 후까지 반복 예측.
+    """
     model.eval()
     model.to(device)
+
+    input_seq = recent_data.clone().detach().to(device)  # (window_size, feature_dim)
+    preds = []
+
     with torch.no_grad():
-        inp = recent_data.unsqueeze(0).to(device)
-        out = model(inp)
-        pred = out[:, 0, :]
-    return pred.squeeze(0).cpu().numpy()
+        for _ in range(months):
+            inp = input_seq.unsqueeze(0)  # (1, window_size, feature_dim)
+            out = model(inp)              # (1, 1, output_size)
+            pred = out[:, 0, :]           # (1, output_size)
+            preds.append(pred.cpu().numpy().squeeze())
+
+            # 다음 입력 시퀀스 업데이트 (슬라이딩 윈도우 방식)
+            new_input = pred  # (1, output_size)
+            new_input_expanded = torch.zeros((1, input_seq.shape[1])).to(device)
+            new_input_expanded[:, :pred.shape[1]] = new_input  # 부족한 feature는 zero padding
+            input_seq = torch.cat([input_seq[1:], new_input_expanded], dim=0)  # shift window
+
+    return np.array(preds[-1])  # 최종 months 번째 결과만 반환

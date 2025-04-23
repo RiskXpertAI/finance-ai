@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse
 from fastapi import FastAPI, Form, Request
 
 from app.server_predict import load_recent_data, predict_nth_future, TimeSeriesLSTMModel
-from app.services import get_openai_response, save_generated_text, build_forecast_prompt
+from app.services import get_openai_response, save_generated_text, build_forecast_prompt, get_latest_data_from_db
 from app.redis_cache import cache_forecast, get_cached_forecast, call_prediction_api
 from starlette.responses import JSONResponse
 from app.routes import protected
@@ -120,7 +120,7 @@ async def predict(months: int = Form(...), window_size: int = Form(12)):
         model.load_state_dict(torch.load("lstm_model.pt", map_location=device))
 
         recent_input, target_scaler, last_time = load_recent_data(feature_cols, target_cols, window_size)
-        pred_scaled = predict_nth_future(model, recent_input, device=device)
+        pred_scaled = predict_nth_future(model, recent_input, months=months, device=device)
         pred_scaled_2d = pred_scaled.reshape(1, -1)
         pred_real = target_scaler.inverse_transform(pred_scaled_2d).flatten().astype(float)
 
@@ -167,8 +167,8 @@ async def stream_chat(request: ChatRequest):
     try:
         forecast = await call_prediction_api(months, 12)
         logging.info(f"[Chat Stream] 예측 데이터 생성 성공")
-
-        prompt = build_forecast_prompt(user_input, forecast,months)
+        current_data = get_latest_data_from_db()
+        prompt = build_forecast_prompt(user_input, forecast, months, current_data)
         gpt_response = await get_openai_response(prompt)
         logging.info(f"[Chat Stream] GPT 요약 응답 완료")
 
